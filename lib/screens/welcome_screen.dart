@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:einkaufsliste/main.dart';
 import 'package:einkaufsliste/screens/auth/auth_screen.dart';
+import 'package:einkaufsliste/services/auth_service.dart';
+
 
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});

@@ -14,7 +14,7 @@ import 'services/family_service.dart';
 import 'models/user_model.dart';
 
 import 'screens/auth/auth_screen.dart';
-import 'screens/main_navigation_screen.dart'; // Your MainAppScreen
+import 'screens/main_navigation_screen.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
@@ -28,7 +28,6 @@ void main() async {
         Provider<AuthService>(create: (_) => AuthService()),
         Provider<DatabaseService>(create: (_) => DatabaseService(familyId: 'currentFamilyId')),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        Provider(create: (_) => DatabaseService()),
         Provider(create: (_) => FamilyService()),
         StreamProvider<UserModel?>(
           create: (context) => Provider.of<AuthService>(context, listen: false).user,
@@ -52,68 +51,25 @@ class MyApp extends StatelessWidget {
           title: 'Shopping App',
           debugShowCheckedModeBanner: false,
           theme: themeProvider.currentTheme,
-          home: const AuthWrapper(),
+          home:  AuthWrapper(),
         );
       },
     );
   }
 }
 
-class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final userModel = context.watch<UserModel?>();  // Watch for user's auth state
-
-    // If no user is logged in (or anonymous), show the welcome screen or allow anonymous login
-    if (userModel == null) {
-      return const WelcomeScreen(); // Show welcome screen or allow anonymous login
-    } else {
-      return const MainAppScreen(); // If logged in (or anonymously), show the main app
-    }
-  }
-}
-
-class AuthService {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-
-  // Anonymous sign-in
-  Future<UserModel?> signInAnonymously() async {
-    try {
-      UserCredential result = await _auth.signInAnonymously();
-      return _userFromFirebase(result.user);
-    } catch (e) {
-      debugPrint('Anonymous sign in error: $e');
-      return null;
+  class AuthWrapper extends StatelessWidget {
+    @override
+    Widget build(BuildContext context) {
+      final userModel = context.watch<UserModel?>();
+      if (userModel == null) {
+        return WelcomeScreen();
+      } else {
+        return MainAppScreen();
+      }
     }
   }
 
-  // Convert Firebase User to UserModel
-  UserModel? _userFromFirebase(User? user) {
-    return user != null
-        ? UserModel(
-            user.uid,
-            email: user.email ?? '',
-            userId: user.uid,
-            displayName: user.displayName ?? '',
-          )
-        : null;
-  }
-
-  // Stream to monitor the user's auth state
-  Stream<UserModel?> get user {
-    return _auth.authStateChanges().map(_userFromFirebase);
-  }
-
-  // Sign out method
-  Future<void> signOut() async {
-    await _auth.signOut();
-  }
-}
-// Duplicate class definition removed.
-
-// Duplicate class definition removed.
 
 class MainAppScreen extends StatefulWidget {
   const MainAppScreen({super.key});

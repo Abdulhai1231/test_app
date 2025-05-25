@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:einkaufsliste/main.dart';
 import '../services/auth_service.dart' as auth_service;
 import '../models/user_model.dart';
+import 'package:einkaufsliste/services/auth_service.dart';
+
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
