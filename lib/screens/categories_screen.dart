@@ -13,8 +13,8 @@ class CategoriesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Categories')),
       body: StreamBuilder<List<Category>>(
-        stream: database.categoriesStream(),
-        builder: (context, snapshot) {
+    stream: DatabaseService().categoriesStream(),
+    builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }

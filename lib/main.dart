@@ -26,6 +26,7 @@ void main() async {
     MultiProvider(
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
+        Provider<DatabaseService>(create: (_) => DatabaseService(familyId: 'currentFamilyId')),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         Provider(create: (_) => DatabaseService()),
         Provider(create: (_) => FamilyService()),
