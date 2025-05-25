@@ -13,18 +13,18 @@ class CategoriesScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Categories')),
       body: StreamBuilder<List<Category>>(
-    stream: DatabaseService().categoriesStream(),
-    builder: (context, snapshot) {
+        stream: database.categoriesStream(),
+        builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
-          
+
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          
+
           final categories = snapshot.data!;
-          
+
           return ListView.builder(
             itemCount: categories.length,
             itemBuilder: (context, index) {
@@ -32,7 +32,7 @@ class CategoriesScreen extends StatelessWidget {
               return ListTile(
                 title: Text(category.name),
                 onTap: () {
-                  // Navigate to category items
+                  // Navigate to category items or do something else
                 },
               );
             },
@@ -48,7 +48,7 @@ class CategoriesScreen extends StatelessWidget {
 
   void _showAddCategoryDialog(BuildContext context, DatabaseService database) {
     final controller = TextEditingController();
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

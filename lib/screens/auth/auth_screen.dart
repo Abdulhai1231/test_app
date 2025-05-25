@@ -30,10 +30,8 @@ class AuthScreen extends StatelessWidget {
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Provider<AuthService>.value(
-                    value: Provider.of<AuthService>(context, listen: false),
-                    child: const LoginScreen(),
-                  ),
+                  builder: (context) => const LoginScreen(),
+
                 ),
               ),
               child: const Text('Email Login'),
@@ -42,10 +40,8 @@ class AuthScreen extends StatelessWidget {
               onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => Provider<AuthService>.value(
-                    value: Provider.of<AuthService>(context, listen: false),
-                    child: const RegisterScreen(),
-                  ),
+                  builder: (context) => const RegisterScreen(),
+
                 ),
               ),
               child: const Text('Create Account'),

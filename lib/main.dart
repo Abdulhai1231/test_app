@@ -59,6 +59,7 @@ class MyApp extends StatelessWidget {
 }
 
   class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key}); // Add key parameter
     @override
     Widget build(BuildContext context) {
       final userModel = context.watch<UserModel?>();

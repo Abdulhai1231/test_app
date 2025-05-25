@@ -74,6 +74,7 @@ Future<UserModel?> signInAnonymously() async {
       return null;
     }
   }
+  
 
   // Google Sign In (returns UserModel)
   Future<UserModel?> signInWithGoogle() async {
@@ -117,4 +118,14 @@ Future<UserModel?> signInAnonymously() async {
       rethrow;
     }
   }
+  Future<void> signInWithEmailAndPasswordRaw(String email, String password, dynamic _firebaseAuth) async {
+  try {
+    await _firebaseAuth.signInWithEmailAndPassword(email: email, password: password);
+  } catch (e, stack) {
+    print("Email sign in error: $e");
+    print(stack);
+    rethrow;
+  }
+}
+
 }

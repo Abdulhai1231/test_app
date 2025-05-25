@@ -1,20 +1,46 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:einkaufsliste/models/category.dart' as my_models;  // keep this, use prefix
+import 'package:einkaufsliste/models/grocery_item.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import '../models/category.dart' as my_models;
-import '../models/grocery_item.dart'; // Added import
 
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final String? familyId; // Make this optional if needed
+  final String? familyId;
 
-  DatabaseService({this.familyId}); // Constructor with optional familyId
+  DatabaseService({this.familyId});
 
   void _log(String message) {
     if (kDebugMode) {
-      print(message); // Only print in debug mode
+      print(message);
     }
-    // Consider using logger package in production
+  }
+
+  // Categories
+  Stream<List<my_models.Category>> categoriesStream() {
+    return _db.collection('categories')
+        .orderBy('createdAt')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+          final data = doc.data();
+          return my_models.Category(
+            id: doc.id,
+            name: data['name'] ?? 'Unnamed',
+            createdBy: data['createdBy'] ?? '',
+            createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+          );
+        }).toList());
+  }
+
+  Future<void> addCategory(String name) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    await _db.collection('categories').add({
+      'name': name,
+      'createdBy': user.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> deleteList(String listId) async {
@@ -95,33 +121,6 @@ class DatabaseService {
     }
   }
 
-  // Categories
-   Stream<List<my_models.Category>> categoriesStream() {
-    return _db.collection('categories')
-        .orderBy('createdAt')
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) {
-          final data = doc.data();
-          return my_models.Category(
-            id: doc.id,
-            name: data['name'] ?? 'Unnamed',
-            createdBy: data['createdBy'] ?? '',
-            createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          );
-        }).toList());
-  }
-
-  Future<void> addCategory(String name) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-    
-    await _db.collection('categories').add({
-      'name': name,
-      'createdBy': user.uid,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-  }
-
   // Items
   Future<void> addItemToList(String listId, String itemName) async {
     await _db.collection('shoppingLists').doc(listId).update({
@@ -152,7 +151,7 @@ class DatabaseService {
   Future<void> addGroceryItem(String listId, GroceryItem item) async {
     try {
       if (familyId == null) throw Exception('Family ID is required');
-      
+
       await _db
           .collection('families/$familyId/groceries')
           .doc(listId)
@@ -176,7 +175,6 @@ class DatabaseService {
     DateTime? dueDate,
     required String imagePath,
   }) async {
-    // Implement using createShoppingList or create separate logic
     return await createShoppingList(
       name: name,
       userId: userId,
