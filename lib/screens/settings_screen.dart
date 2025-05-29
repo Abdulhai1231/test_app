@@ -23,7 +23,7 @@ class SettingsScreen extends StatelessWidget {
           if (user != null) ...[
             ListTile(
               leading: const Icon(Icons.person),
-              title: Text(user.email ?? 'No email available'),
+              title: Text(user.email),
             ),
             const Divider(),
           ],

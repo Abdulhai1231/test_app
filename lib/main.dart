@@ -1,3 +1,4 @@
+import 'package:einkaufsliste/screens/auth/login_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -26,12 +27,19 @@ void main() async {
     MultiProvider(
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
-        Provider<DatabaseService>(create: (_) => DatabaseService(familyId: 'currentFamilyId')),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
-        Provider(create: (_) => FamilyService()),
         StreamProvider<UserModel?>(
           create: (context) => Provider.of<AuthService>(context, listen: false).user,
           initialData: null,
+        ),
+        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        Provider<FamilyService>(create: (_) => FamilyService()),
+
+        /// ✅ ProxyProvider that rebuilds DatabaseService when UserModel changes
+        ProxyProvider<UserModel?, DatabaseService>(
+          update: (context, user, _) => DatabaseService(
+            userId: user?.uid ?? '',
+            familyId: user?.familyId ?? '',
+          ),
         ),
       ],
       child: const MyApp(),
@@ -52,6 +60,9 @@ class MyApp extends StatelessWidget {
           debugShowCheckedModeBanner: false,
           theme: themeProvider.currentTheme,
           home:  AuthWrapper(),
+          routes: {
+          '/home': (context) => MainAppScreen(),
+        },
         );
       },
     );
@@ -59,17 +70,28 @@ class MyApp extends StatelessWidget {
 }
 
   class AuthWrapper extends StatelessWidget {
-  const AuthWrapper({super.key}); // Add key parameter
-    @override
-    Widget build(BuildContext context) {
-      final userModel = context.watch<UserModel?>();
-      if (userModel == null) {
-        return WelcomeScreen();
-      } else {
-        return MainAppScreen();
-      }
-    }
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasData) {
+          // User is logged in, show the full MainAppScreen with tabs
+          return const MainAppScreen();
+        } else {
+          // User is NOT logged in
+          return const WelcomeScreen();
+        }
+      },
+    );
   }
+}
+
 
 
 class MainAppScreen extends StatefulWidget {

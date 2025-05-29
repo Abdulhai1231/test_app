@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../services/family_service.dart';
-import '../../models/user_model.dart'; // Changed from User to UserModel
-import 'invite_member_screen.dart';
+import 'package:einkaufsliste/services/family_service.dart';
+import 'package:einkaufsliste/models/user_model.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FamilyGroupScreen extends StatelessWidget {
-  const FamilyGroupScreen({super.key}); // Added key parameter
+  const FamilyGroupScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final familyService = Provider.of<FamilyService>(context);
-    final currentUser = Provider.of<UserModel?>(context); // Changed from User to UserModel
+    final currentUser = Provider.of<UserModel?>(context);
 
     if (currentUser == null) {
       return const Scaffold(
-        body: Center(child: Text('User not authenticated')),
+        body: Center(child: Text('Please sign in first')),
       );
     }
 
@@ -24,134 +24,218 @@ class FamilyGroupScreen extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: familyService.getUserFamilyGroups(currentUser.uid),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-          
-          if (snapshot.data!.docs.isEmpty) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('You are not in any family group yet'),
+                  const Text('No family group found'),
                   const SizedBox(height: 20),
                   ElevatedButton(
+                    onPressed: () => _showCreateDialog(context, familyService, currentUser),
                     child: const Text('Create Family Group'),
-                    onPressed: () => _showCreateGroupDialog(context, familyService, currentUser),
                   ),
                 ],
               ),
             );
           }
-          
-          var group = snapshot.data!.docs.first;
-          List members = group['members'];
-          List pendingInvites = group['pendingInvitations'] ?? [];
-          
-          return Column(
-            children: [
-              ListTile(
-                title: Text(group['name'], style: const TextStyle(fontSize: 20)),
-                subtitle: const Text('Family Group'),
-              ),
-              const Divider(),
-              const Padding(
-                padding: EdgeInsets.all(8.0),
-                child: Text('Members', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: members.length,
-                  itemBuilder: (context, index) {
-                    return FutureBuilder<DocumentSnapshot>(
-                      future: FirebaseFirestore.instance.collection('users').doc(members[index]).get(),
-                      builder: (context, userSnapshot) {
-                        if (!userSnapshot.hasData) return const ListTile(title: Text('Loading...'));
-                        
-                        return ListTile(
-                          title: Text(userSnapshot.data!['email']),
-                          trailing: group['admin'] == currentUser.uid && 
-                                   members[index] != currentUser.uid
-                              ? IconButton(
-                                  icon: const Icon(Icons.remove),
-                                  onPressed: () => familyService.removeMember(group.id, members[index]),
-                                )
-                              : null,
-                        );
-                      },
-                    );
-                  },
-                ),
-              ),
-              if (pendingInvites.isNotEmpty) ...[
-                const Divider(),
-                const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: Text('Pending Invitations', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                ...pendingInvites.map((email) => ListTile(
-                  title: Text(email),
-                  trailing: group['admin'] == currentUser.uid
-                      ? IconButton(
-                          icon: const Icon(Icons.cancel),
-                          onPressed: () => familyService.cancelInvitation(group.id, email),
-                        )
-                      : null,
-                )),
-              ],
-            ],
-          );
-        },
-      ),
-      floatingActionButton: Consumer<FamilyService>(
-        builder: (context, familyService, _) {
-          return StreamBuilder<QuerySnapshot>(
-            stream: familyService.getUserFamilyGroups(currentUser.uid), // Added user ID parameter
-            builder: (context, snapshot) {
-              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) return const SizedBox();
-              
-              var group = snapshot.data!.docs.first;
-              if (group['admin'] != currentUser.uid) return const SizedBox();
-              
-              return FloatingActionButton(
-                child: const Icon(Icons.person_add),
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => InviteMemberScreen(groupId: group.id)),
-                ),
-              );
-            },
-          );
+
+          final group = snapshot.data!.docs.first;
+          final data = group.data() as Map<String, dynamic>;
+          return _buildGroupUI(context, group.id, data, familyService, currentUser);
         },
       ),
     );
   }
 
-  void _showCreateGroupDialog(BuildContext context, FamilyService familyService, UserModel currentUser) {
-    final TextEditingController nameController = TextEditingController();
-    
+  Widget _buildGroupUI(
+    BuildContext context,
+    String groupId,
+    Map<String, dynamic> groupData,
+    FamilyService service,
+    UserModel currentUser,
+  ) {
+    final members = List<String>.from(groupData['members'] ?? []);
+    final pendingInvites = List<String>.from(groupData['pendingInvites'] ?? []);
+    final isAdmin = groupData['admin'] == currentUser.uid;
+
+    return Column(
+      children: [
+        ListTile(
+          title: Text(
+            groupData['name'] ?? 'Family Group',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text('Admin: ${isAdmin ? 'You' : 'Family Admin'}'),
+        ),
+        const Divider(),
+        const Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Text('MEMBERS', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        Expanded(
+          child: ListView.builder(
+            itemCount: members.length,
+            itemBuilder: (context, index) {
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('users').doc(members[index]).get(),
+                builder: (context, userSnapshot) {
+                  if (!userSnapshot.hasData) {
+                    return const ListTile(title: Text('Loading...'));
+                  }
+
+                  final userData = userSnapshot.data!.data() as Map<String, dynamic>?;
+                  final email = userData?['email'] ?? 'Unknown member';
+
+                  return ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.person)),
+                    title: Text(email),
+                    trailing: isAdmin && members[index] != currentUser.uid
+                        ? IconButton(
+                            icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                            onPressed: () => service.removeMember(groupId, members[index]),
+                          )
+                        : null,
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        if (pendingInvites.isNotEmpty) ...[
+          const Divider(),
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text('PENDING INVITES', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          ...pendingInvites.map((email) => ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.mail_outline)),
+                title: Text(email),
+                trailing: isAdmin
+                    ? IconButton(
+                        icon: const Icon(Icons.cancel, color: Colors.orange),
+                        onPressed: () => service.cancelInvitation(groupId, email),
+                      )
+                    : null,
+              )),
+        ],
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.logout, color: Colors.white),
+                label: const Text('Leave Family Group'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                onPressed: () => _showLeaveFamilyDialog(context, service, groupId),
+              ),
+              if (isAdmin) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'As the admin, leaving will delete the group for everyone.',
+                  style: TextStyle(color: Colors.redAccent),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showLeaveFamilyDialog(BuildContext context, FamilyService service, String groupId) async {
+    final user = FirebaseAuth.instance.currentUser;
+    final groupSnap = await FirebaseFirestore.instance.collection('familyGroups').doc(groupId).get();
+    final isAdmin = groupSnap['admin'] == user?.uid;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isAdmin ? 'Delete Family Group' : 'Leave Family Group'),
+        content: Text(isAdmin
+            ? 'As the admin, leaving will delete the family group for everyone. Are you sure?'
+            : 'Are you sure you want to leave this family group?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await service.leaveFamilyGroup(groupId);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(isAdmin
+                          ? 'Family group deleted.'
+                          : 'You have left the family group.'),
+                    ),
+                  );
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const FamilyGroupScreen()),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              }
+            },
+            child: Text(isAdmin ? 'Delete' : 'Leave', style: const TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateDialog(BuildContext context, FamilyService service, UserModel user) {
+    final controller = TextEditingController();
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Create Family Group'),
         content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(labelText: 'Group Name'),
+          controller: controller,
+          decoration: const InputDecoration(labelText: 'Family Name', hintText: 'e.g. Smith Family'),
         ),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
             onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
           TextButton(
-            child: const Text('Create'),
             onPressed: () async {
-              if (nameController.text.isNotEmpty) {
-                await familyService.createFamilyGroup(
-                  nameController.text, 
-                  currentUser.uid
-                );
-                Navigator.pop(context);
+              if (controller.text.isNotEmpty) {
+                try {
+                  await service.createFamilyGroup(controller.text);
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Family group created!')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${e.toString()}')),
+                    );
+                  }
+                }
               }
             },
+            child: const Text('Create'),
           ),
         ],
       ),

@@ -18,8 +18,17 @@ class AuthScreen extends StatelessWidget {
             const SizedBox(height: 20),
             ElevatedButton(
               child: const Text('Sign In with Google'),
-              onPressed: () => _handleGoogleSignIn(context),
-            ),
+              onPressed: () async {
+                try {
+                  final authService = Provider.of<AuthService>(context, listen: false);
+                  await authService.signInWithGoogle(context); // Pass context here
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              },
+            ),      
             const SizedBox(height: 10),
             ElevatedButton(
               child: const Text('Continue as Guest'),
@@ -55,7 +64,7 @@ class AuthScreen extends StatelessWidget {
   Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
       final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signInWithGoogle();
+      await authService.signInWithGoogle(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e')),

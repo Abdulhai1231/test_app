@@ -42,13 +42,18 @@ class WelcomeScreen extends StatelessWidget {
 
   // Handle anonymous sign-in
   Future<void> _handleAnonymousSignIn(BuildContext context) async {
-    try {
-      final authService = Provider.of<AuthService>(context, listen: false);
-      await authService.signInAnonymously();
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
+  try {
+    final authService = Provider.of<AuthService>(context, listen: false);
+    await authService.signInAnonymously();
+
+    // After successful anonymous sign-in, navigate to main app screen
+    Navigator.of(context).pushReplacementNamed('/home'); 
+    // or use: Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => MainAppScreen()));
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Error: $e')),
+    );
   }
+}
+
 }

@@ -6,14 +6,25 @@ import 'package:flutter/foundation.dart';
 
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final String? familyId;
 
-  DatabaseService({this.familyId});
+  final String? familyId; // nullable now, can be null if not provided
+  final String userId;
+
+  DatabaseService({this.familyId, required this.userId});
 
   void _log(String message) {
     if (kDebugMode) {
       print(message);
     }
+  }
+
+  static Future<String?> fetchFamilyId() async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('familyGroups')
+        .where('members', arrayContains: FirebaseAuth.instance.currentUser!.uid)
+        .limit(1)
+        .get();
+    return snapshot.docs.isEmpty ? null : snapshot.docs.first.id;
   }
 
   // Categories
@@ -32,6 +43,10 @@ class DatabaseService {
         }).toList());
   }
 
+  Stream<User?> userStream() {
+    return FirebaseAuth.instance.authStateChanges();
+  }
+
   Future<void> addCategory(String name) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -44,7 +59,13 @@ class DatabaseService {
   }
 
   Future<void> deleteList(String listId) async {
-    await _db.collection('shoppingLists').doc(listId).delete();
+    try {
+      await _db.collection('shoppingLists').doc(listId).delete();
+      _log('Deleted list $listId');
+    } catch (e) {
+      _log('Error deleting list $listId: $e');
+      rethrow;
+    }
   }
 
   Future<void> updateList(String listId, String name, DateTime? dueDate) async {
@@ -55,9 +76,12 @@ class DatabaseService {
   }
 
   // Shopping Lists
+
   Stream<QuerySnapshot> getUserShoppingLists(String userId) {
-    return _db.collection('shoppingLists')
+    return _db
+        .collection('shoppingLists')
         .where('createdBy', isEqualTo: userId)
+        .where('type', isEqualTo: 'personal')
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
@@ -66,9 +90,11 @@ class DatabaseService {
     return _db.collection('shoppingLists').doc(listId).snapshots();
   }
 
-  Stream<QuerySnapshot> getFamilyShoppingLists(String groupId) {
-    return _db.collection('shoppingLists')
-        .where('groupId', isEqualTo: groupId)
+  Stream<QuerySnapshot> getFamilyShoppingLists(String familyId) {
+    return _db
+        .collection('shoppingLists')
+        .where('familyId', isEqualTo: familyId)
+        .where('type', isEqualTo: 'family')
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
@@ -97,31 +123,62 @@ class DatabaseService {
     }
   }
 
-  Future<String> createShoppingList({
+  Future<void> createShoppingListForUser(String userId, String name, String type) async {
+    final listData = {
+      'name': name,
+      'createdBy': userId,
+      'createdAt': FieldValue.serverTimestamp(),
+      'dueDate': null,
+      'imagePath': '', // or use a default image path if needed
+      'type': type,
+    };
+
+    if (type == 'family') {
+      final currentFamilyId = await _getCurrentFamilyId();
+      if (currentFamilyId != null) {
+        listData['familyId'] = currentFamilyId;
+      }
+    }
+
+    await _db.collection('shoppingLists').add(listData);
+  }
+
+  Future<void> createShoppingList({
     required String name,
     required String userId,
-    DateTime? dueDate,
+    required DateTime dueDate,
     required String imagePath,
+    required String groupId,
+    required String type,
   }) async {
-    try {
-      final now = DateTime.now();
-      final docRef = await _db.collection('shoppingLists').add({
-        'name': name,
-        'createdBy': userId,
-        'createdAt': Timestamp.fromDate(now),
-        'dueDate': dueDate,
-        'imageUrl': imagePath,
-        'items': [],
-        'type': 'personal',
-      });
-      return docRef.id;
-    } catch (e) {
-      _log('Error creating shopping list: $e');
-      rethrow;
+    final listData = {
+      'name': name,
+      'createdBy': userId,
+      'createdAt': Timestamp.now(),
+      'dueDate': Timestamp.fromDate(dueDate),
+      'imagePath': imagePath,
+      'type': type,
+    };
+
+    if (groupId.isNotEmpty) {
+      listData['familyId'] = groupId;
+      listData['groupId'] = groupId;
     }
+
+    await _db.collection('shoppingLists').add(listData);
+  }
+
+  Future<String?> _getCurrentFamilyId() async {
+    final snapshot = await _db.collection('familyGroups')
+        .where('members', arrayContains: FirebaseAuth.instance.currentUser!.uid)
+        .limit(1)
+        .get();
+
+    return snapshot.docs.isEmpty ? null : snapshot.docs.first.id;
   }
 
   // Items
+
   Future<void> addItemToList(String listId, String itemName) async {
     await _db.collection('shoppingLists').doc(listId).update({
       'items': FieldValue.arrayUnion([{
@@ -169,13 +226,15 @@ class DatabaseService {
     // Implement as needed
   }
 
-  Future<String> createNewShoppingList({
+  Future<String?> createNewShoppingList({
     required String name,
     required String userId,
+    String? groupId,
     DateTime? dueDate,
     required String imagePath,
   }) async {
-    return await createShoppingList(
+    // For now, use createPersonalShoppingList to return the list ID
+    return await createPersonalShoppingList(
       name: name,
       userId: userId,
       dueDate: dueDate,
