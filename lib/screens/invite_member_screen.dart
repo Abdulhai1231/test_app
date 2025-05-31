@@ -39,12 +39,19 @@ class _InviteMemberScreenState extends State<InviteMemberScreen> {
               ElevatedButton(
                 child: const Text('Send Invitation'),
                 onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
+                if (_formKey.currentState!.validate()) {
+                  try {
                     await Provider.of<FamilyService>(context, listen: false)
-                      .inviteMember(widget.groupId, _emailController.text);
+                        .inviteMember(widget.groupId, _emailController.text);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Invitation sent')));
                     Navigator.pop(context);
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error: ${e.toString()}')));
                   }
-                },
+                }
+              },
               ),
             ],
           ),

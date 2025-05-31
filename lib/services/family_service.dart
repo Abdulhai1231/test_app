@@ -101,7 +101,6 @@ class FamilyService {
     if (!groupSnap.exists) throw Exception('Family group not found');
 
     final data = groupSnap.data()!;
-    final members = List<String>.from(data['members'] ?? []);
     final admin = data['admin'];
 
     if (admin == user.uid) {
@@ -187,5 +186,47 @@ Future<String?> _getCurrentFamilyId() async {
       .get();
   return snapshot.docs.isEmpty ? null : snapshot.docs.first.id;
 }
+Future<void> sendInvitation(String groupId, String email) async {
+  final groupRef = FirebaseFirestore.instance.collection('familyGroups').doc(groupId);
 
+  // Optional: Prevent duplicates
+  final doc = await groupRef.get();
+  final data = doc.data()!;
+  final currentInvites = List<String>.from(data['pendingInvites'] ?? []);
+  final members = List<String>.from(data['members'] ?? []);
+
+  if (members.contains(email) || currentInvites.contains(email)) {
+    throw Exception('User already a member or already invited');
+  }
+
+  await groupRef.update({
+    'pendingInvites': FieldValue.arrayUnion([email]),
+  });
+}
+  Stream<QuerySnapshot> getPendingInvitesForUser(String email) {
+  return FirebaseFirestore.instance
+      .collection('familyGroups')
+      .where('pendingInvites', arrayContains: email)
+      .snapshots();
+}
+  Future<void> acceptInvitation(String groupId, String userId, String email) async {
+  final groupRef = FirebaseFirestore.instance.collection('familyGroups').doc(groupId);
+
+  await groupRef.update({
+    'members': FieldValue.arrayUnion([userId]),
+    'pendingInvites': FieldValue.arrayRemove([email]),
+  });
+
+  // Optional: Update user's document with familyId
+  await FirebaseFirestore.instance.collection('users').doc(userId).update({
+    'familyId': groupId,
+  });
+}
+  Future<void> removeMemberFromFamily(String groupId, String memberId) async {
+    await _db.collection('familyGroups').doc(groupId).update({
+      'members': FieldValue.arrayRemove([memberId])
+    });
+  }
+
+  
 }

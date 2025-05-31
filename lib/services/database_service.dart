@@ -144,29 +144,36 @@ class DatabaseService {
   }
 
   Future<void> createShoppingList({
-    required String name,
-    required String userId,
-    required DateTime dueDate,
-    required String imagePath,
-    required String groupId,
-    required String type,
-  }) async {
+  required String name,
+  required String userId,
+  required DateTime dueDate,
+  required String imagePath,
+  String? groupId,
+  required String type,
+}) async {
+  try {
     final listData = {
       'name': name,
       'createdBy': userId,
-      'createdAt': Timestamp.now(),
+      'createdAt': FieldValue.serverTimestamp(),
       'dueDate': Timestamp.fromDate(dueDate),
       'imagePath': imagePath,
       'type': type,
+      'items': [],
     };
 
-    if (groupId.isNotEmpty) {
+    if (groupId != null && type == 'family') {
       listData['familyId'] = groupId;
       listData['groupId'] = groupId;
     }
 
     await _db.collection('shoppingLists').add(listData);
+    _log('Successfully created $type list: $name');
+  } catch (e) {
+    _log('Error creating shopping list: $e');
+    rethrow;
   }
+}
 
   Future<String?> _getCurrentFamilyId() async {
     final snapshot = await _db.collection('familyGroups')
@@ -176,6 +183,26 @@ class DatabaseService {
 
     return snapshot.docs.isEmpty ? null : snapshot.docs.first.id;
   }
+  Future<String?> getCurrentUserFamilyId(String userId) async {
+  try {
+    // First check if we have a local familyId
+    final userDoc = await _db.collection('users').doc(userId).get();
+    if (userDoc.exists && userDoc.data()?['familyId'] != null) {
+      return userDoc.data()!['familyId'];
+    }
+
+    // If not, check familyGroups collection
+    final familyQuery = await _db.collection('familyGroups')
+        .where('members', arrayContains: userId)
+        .limit(1)
+        .get();
+
+    return familyQuery.docs.isEmpty ? null : familyQuery.docs.first.id;
+  } catch (e) {
+    debugPrint('Error getting family ID: $e');
+    return null;
+  }
+}
 
   // Items
 
@@ -227,18 +254,57 @@ class DatabaseService {
   }
 
   Future<String?> createNewShoppingList({
-    required String name,
-    required String userId,
-    String? groupId,
-    DateTime? dueDate,
-    required String imagePath,
-  }) async {
-    // For now, use createPersonalShoppingList to return the list ID
-    return await createPersonalShoppingList(
-      name: name,
-      userId: userId,
-      dueDate: dueDate,
-      imagePath: imagePath,
-    );
+  required String name,
+  required String userId,
+  String? groupId,
+  DateTime? dueDate,
+  required String imagePath,
+}) async {
+  try {
+    final now = DateTime.now();
+    final listData = {
+      'name': name,
+      'createdBy': userId,
+      'createdAt': Timestamp.fromDate(now),
+      'dueDate': dueDate != null ? Timestamp.fromDate(dueDate) : null,
+      'imagePath': imagePath,
+      'items': [],
+      'type': groupId != null ? 'family' : 'personal',
+    };
+
+    if (groupId != null) {
+      listData['familyId'] = groupId;
+      listData['groupId'] = groupId;
+    }
+
+    final docRef = await _db.collection('shoppingLists').add(listData);
+    return docRef.id;
+  } catch (e) {
+    _log('Error creating shopping list: $e');
+    rethrow;
+  }
+}
+
+  Future<void> updateGroceryItem(String listId, GroceryItem item) async {
+    try {
+      if (familyId == null) throw Exception('Family ID is required');
+
+      await _db
+          .collection('families/$familyId/groceries')
+          .doc(listId)
+          .update({
+        'items': FieldValue.arrayRemove([item.toMap()]),
+      });
+
+      await _db
+          .collection('families/$familyId/groceries')
+          .doc(listId)
+          .update({
+        'items': FieldValue.arrayUnion([item.toMap()]),
+      });
+    } catch (e) {
+      _log("Error updating item: $e");
+      rethrow;
+    }
   }
 }

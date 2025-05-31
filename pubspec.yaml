@@ -20,6 +20,7 @@ dependencies:
   intl: ^0.18.1
   cupertino_icons: ^1.0.8
   rxdart: ^0.27.7
+  url_launcher: ^6.3.1
 
 dev_dependencies:
   flutter_test:
@@ -45,6 +46,9 @@ flutter:
     - images/Aldi.png
     - images/Netto.png
     - images/Penny.png
+    - images/Rewe.png
+    - images/Kaufland.png
+    - images/Lidl.png
     - images/home.png
     - images/splash.png
 

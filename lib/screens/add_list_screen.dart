@@ -24,7 +24,7 @@ class _AddListScreenState extends State<AddListScreen> {
         _selectedDate,
         _selectedImagePath!,
       );
-      Navigator.pop(context);
+      Navigator.pop(context, "refresh");
     } else if (_selectedImagePath == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select an image')),
@@ -148,6 +148,9 @@ class ImageSelectionScreen extends StatelessWidget {
       'images/Aldi.png',
       'images/Netto.png',
       'images/Penny.png',
+      'images/Rewe.png',
+      'images/Lidl.png',
+      'images/Kaufland.png',
       // Add more if you have other store images
     ];
 

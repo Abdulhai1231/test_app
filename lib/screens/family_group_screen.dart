@@ -1,3 +1,4 @@
+import 'package:einkaufsliste/screens/InvitationsScreen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -30,18 +31,30 @@ class FamilyGroupScreen extends StatelessWidget {
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('No family group found'),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => _showCreateDialog(context, familyService, currentUser),
-                    child: const Text('Create Family Group'),
-                  ),
-                ],
-              ),
-            );
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('No family group found'),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => _showCreateDialog(context, familyService, currentUser),
+                  child: const Text('Create Family Group'),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.mail_outline),
+                  label: const Text('Check Invitations'),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const InvitationsScreen()),
+                    );
+                  },
+                ),
+              ],
+            ),
+          );
+
           }
 
           final group = snapshot.data!.docs.first;
@@ -133,6 +146,16 @@ class FamilyGroupScreen extends StatelessWidget {
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () => _showLeaveFamilyDialog(context, service, groupId),
               ),
+              if (isAdmin)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.person_add),
+                    label: const Text('Invite Member'),
+                    onPressed: () => _showInviteDialog(context, service, groupId),
+                  ),
+                ),
+
               if (isAdmin) ...[
                 const SizedBox(height: 8),
                 const Text(
@@ -241,4 +264,52 @@ class FamilyGroupScreen extends StatelessWidget {
       ),
     );
   }
+  void _showInviteDialog(BuildContext context, FamilyService service, String groupId) {
+  final emailController = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Invite Member'),
+      content: TextField(
+        controller: emailController,
+        decoration: const InputDecoration(
+          labelText: 'Email',
+          hintText: 'Enter the user\'s email',
+        ),
+        keyboardType: TextInputType.emailAddress,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () async {
+            final email = emailController.text.trim();
+            if (email.isNotEmpty) {
+              Navigator.pop(context);
+              try {
+                await service.sendInvitation(groupId, email);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Invitation sent to $email')),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              }
+            }
+          },
+          child: const Text('Send'),
+        ),
+      ],
+    ),
+  );
+}
+
 }
