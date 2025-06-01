@@ -32,7 +32,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final rootContext = navigatorKey.currentContext!;
     final authService = Provider.of<AuthService>(rootContext, listen: false);
-    final user = Provider.of<UserModel?>(rootContext);
+    final user = Provider.of<UserModel?>(context);
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return Scaffold(
@@ -41,21 +41,35 @@ class SettingsScreen extends StatelessWidget {
         children: [
           if (user != null) ...[
             ListTile(
-              leading: const Icon(Icons.person),
+              leading: const Icon(Icons.account_circle),
+              title: Text(user.displayName.isNotEmpty ? user.displayName : 'No Name'),
+              subtitle: Text(user.email),
+              onTap: () {
+                // Optionally navigate to profile edit screen
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.email),
               title: const Text('Contact Support'),
               onTap: () => _launchEmail(context),
             ),
-            const Divider(),
-            SwitchListTile(
-              title: const Text('Dark Mode'),
-              value: themeProvider.isDarkMode,
-              onChanged: (value) {
-                themeProvider.toggleTheme();
-              },
-              secondary: const Icon(Icons.brightness_6),
+          ] else ...[
+            ListTile(
+              leading: const Icon(Icons.account_circle),
+              title: const Text('Not signed in'),
+              subtitle: const Text('Please sign in to access settings'),
             ),
-            const Divider(),
           ],
+          const Divider(),
+          SwitchListTile(
+            title: const Text('Dark Mode'),
+            value: themeProvider.isDarkMode,
+            onChanged: (value) {
+              themeProvider.toggleTheme();
+            },
+            secondary: const Icon(Icons.brightness_6),
+          ),
+          const Divider(),
           ListTile(
             leading: const Icon(Icons.info),
             title: const Text('About'),
@@ -94,10 +108,33 @@ class SettingsScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.logout),
             title: const Text('Sign Out'),
-            onTap: () => authService.signOut(),
+            onTap: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Sign Out'),
+                  content: const Text('Are you sure you want to sign out?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Sign Out'),
+                    ),
+                  ],
+                ),
+              );
+              
+              if (confirmed == true) {
+                await authService.signOut();
+              }
+            },
           ),
         ],
       ),
     );
   }
+  
 }

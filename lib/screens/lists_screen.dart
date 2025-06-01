@@ -1,4 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:einkaufsliste/screens/invitationsscreen.dart';
+import 'package:einkaufsliste/services/family_service.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -139,14 +141,38 @@ Widget _buildFamilyLists(BuildContext context, UserModel user) {
       }
 
       final familyId = snapshot.data;
+      
+      // If no family group, show join/create options
       if (familyId == null || familyId.isEmpty) {
-        return const Center(child: Text('No family lists available.'));
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text('No family group found'),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () => _showCreateFamilyDialog(context),
+                child: const Text('Create Family Group'),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.mail_outline),
+                label: const Text('Check Invitations'),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const InvitationsScreen()),
+                  );
+                },
+              ),
+            ],
+          ),
+        );
       }
 
       return RefreshIndicator(
         onRefresh: () async {
           setState(() {}); // rebuild widget to refresh data
-          // additional refresh logic can go here if necessary
         },
         child: StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
@@ -165,6 +191,12 @@ Widget _buildFamilyLists(BuildContext context, UserModel user) {
 
             if (!listSnapshot.hasData || listSnapshot.data!.docs.isEmpty) {
               return const Center(child: Text('No family lists found.'));
+            }
+             if (listSnapshot.hasData) {
+              debugPrint('Family lists docs count: ${listSnapshot.data!.docs.length}');
+              for (var doc in listSnapshot.data!.docs) {
+                debugPrint('Family list doc: ${doc.id} - ${doc.data()}');
+              }
             }
 
             final docs = listSnapshot.data!.docs;
@@ -197,7 +229,8 @@ Widget _buildFamilyLists(BuildContext context, UserModel user) {
                         ? Text('Due: ${DateFormat.yMd().format(list.dueDate!)}')
                         : null,
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _navigateToListItems(context, list, Provider.of<DatabaseService>(context, listen: false)),
+                    onTap: () => _navigateToListItems(
+                        context, list, Provider.of<DatabaseService>(context, listen: false)),
                   ),
                 );
               },
@@ -209,32 +242,113 @@ Widget _buildFamilyLists(BuildContext context, UserModel user) {
   );
 }
 
-  Future<void> _showListTypeBottomSheet(BuildContext context) async {
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Create Personal List'),
-            onTap: () => Navigator.pop(context, 'personal'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.group),
-            title: const Text('Create Shared List'),
-            onTap: () => Navigator.pop(context, 'shared'),
-          ),
-        ],
-      ),
-    );
+void _showCreateFamilyDialog(BuildContext context) {
+  final familyService = Provider.of<FamilyService>(context, listen: false);
+  final currentUser = Provider.of<UserModel?>(context, listen: false);
+  
+  if (currentUser == null) return;
 
-    if (result == 'personal') {
-      await _navigateToCreateList(context, false);
-    } else if (result == 'shared') {
-      await _navigateToCreateList(context, true);
-    }
+  final controller = TextEditingController();
+
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Create Family Group'),
+      content: TextField(
+        controller: controller,
+        decoration: const InputDecoration(
+          labelText: 'Family Name',
+          hintText: 'e.g. Smith Family',
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: () async {
+            if (controller.text.isNotEmpty) {
+              try {
+                await familyService.createFamilyGroup(controller.text);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Family group created!')),
+                  );
+                  setState(() {}); // Refresh the screen
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${e.toString()}')),
+                  );
+                }
+              }
+            }
+          },
+          child: const Text('Create'),
+        ),
+      ],
+    ),
+  );
+}
+Future<void> _showListTypeBottomSheet(BuildContext context) async {
+  final user = Provider.of<UserModel?>(context, listen: false);
+  if (user == null) return;
+
+  final result = await showModalBottomSheet<String>(
+    context: context,
+    builder: (context) => Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ListTile(
+          leading: const Icon(Icons.person),
+          title: const Text('Create Personal List'),
+          onTap: () => Navigator.pop(context, 'personal'),
+        ),
+        ListTile(
+          leading: const Icon(Icons.group),
+          title: const Text('Create Shared List'),
+          onTap: () async {
+            // Check family membership before allowing to proceed
+            final hasFamily = await _verifyFamilyMembership(context, user.uid) != null;
+            if (!hasFamily && context.mounted) {
+              Navigator.pop(context);
+              _showFamilyRequiredNotification(context);
+            } else {
+              Navigator.pop(context, 'shared');
+            }
+          },
+        ),
+      ],
+    ),
+  );
+
+  if (result == 'personal') {
+    await _navigateToCreateList(context, false);
+  } else if (result == 'shared') {
+    await _navigateToCreateList(context, true);
   }
+}
+void _showFamilyRequiredNotification(BuildContext context) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: const Text('You need to join or create a family group first'),
+      action: SnackBarAction(
+        label: 'Go to Family',
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const FamilyGroupScreen()),
+          );
+        },
+      ),
+      duration: const Duration(seconds: 4),
+    ),
+  );
+}
 
   Future<void> _navigateToCreateList(BuildContext context, bool isShared) async {
     final user = Provider.of<UserModel?>(context, listen: false);
@@ -255,7 +369,7 @@ Widget _buildFamilyLists(BuildContext context, UserModel user) {
           : await _verifyFamilyMembership(context, user.uid);
       if (currentFamilyId == null) {
         if (!context.mounted) return;
-        _showFamilyGroupRequiredDialog(context);
+        _showFamilyRequiredNotification(context);
         return;
       }
       groupId = currentFamilyId;
@@ -368,26 +482,33 @@ Widget _buildFamilyLists(BuildContext context, UserModel user) {
 
 
   Future<void> _navigateToListItems(
-      BuildContext context, ShoppingList list, DatabaseService database) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => ListItemsScreen(
-          list: list,
-          onAddItem: (listId, itemName) async {
-            await database.addItemToList(listId, itemName);
-          },
-          onUpdate: () => setState(() {}),
-          onDeleteList: () async {
-            await database.deleteList(list.id);
-            if (!mounted) return;
-            Navigator.pop(context);
-          },
-          onEditList: (id, name, date) async {
-            await database.updateList(id, name, date ?? DateTime.now());
-          },
-        ),
+  BuildContext context,
+  ShoppingList list,
+  DatabaseService database,
+) async {
+  final result = await Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ListItemsScreen(
+        list: list,
+        onAddItem: (listId, itemName) async {
+          await database.addItemToList(listId, itemName);
+        },
+        onUpdate: () => setState(() {}),
+        onDeleteList: () async {
+          await database.deleteList(list.id);
+          if (!mounted) return;
+          Navigator.pop(context, 'deleted'); // <-- pass result back
+        },
+        onEditList: (id, name, date) async {
+          await database.updateList(id, name, date ?? DateTime.now());
+        },
       ),
-    );
+    ),
+  );
+
+  if (result == 'deleted') {
+    setState(() {}); // rebuild screen to refresh list
   }
+}
 }

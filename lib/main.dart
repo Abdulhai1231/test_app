@@ -13,6 +13,7 @@ import 'providers/theme_provider.dart';
 import 'services/database_service.dart';
 import 'services/family_service.dart';
 import 'models/user_model.dart';
+import 'firebase_options.dart'; // Import the generated Firebase options
 
 import 'screens/auth/auth_screen.dart';
 import 'screens/main_navigation_screen.dart';
@@ -21,7 +22,10 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+     options: DefaultFirebaseOptions.currentPlatform,
+  );
+  // Ensure Firebase is initialized before running the app  
 
   runApp(
     MultiProvider(
@@ -45,6 +49,10 @@ void main() async {
       child: const MyApp(),
     ),
   );
+}
+
+class DefaultFirebaseOptions {
+  static var currentPlatform;
 }
 
 class MyApp extends StatelessWidget {
@@ -72,16 +80,19 @@ class MyApp extends StatelessWidget {
   class AuthWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+    final authService = Provider.of<AuthService>(context, listen: false);
+    
+    return StreamBuilder<UserModel?>(
+      stream: authService.user, // Use the user stream from AuthService
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Scaffold(
             body: Center(child: CircularProgressIndicator()),
           );
         }
+        
         if (snapshot.hasData) {
-          // User is logged in, show the full MainAppScreen with tabs
+          // User is logged in
           return const MainAppScreen();
         } else {
           // User is NOT logged in

@@ -24,8 +24,11 @@ class AuthService {
 
   // Load full user data from Firestore (including familyId)
   Stream<UserModel?> get user {
-  return _auth.authStateChanges().map((User? user) {
-    return user != null ? UserModel.fromFirebase(user) : null;
+  return _auth.authStateChanges().asyncMap((User? firebaseUser) async {
+    if (firebaseUser == null) return null;
+    
+    // Load full user data from Firestore
+    return await loadFullUser(firebaseUser.uid);
   });
 }
 
