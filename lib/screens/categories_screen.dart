@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../services/database_service.dart';
 import '../models/category.dart';
-
 class CategoriesScreen extends StatelessWidget {
   const CategoriesScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Hole die Instanz des DatabaseService über Provider
     final database = Provider.of<DatabaseService>(context);
     final theme = Theme.of(context);
 
@@ -17,21 +17,23 @@ class CategoriesScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 0,
       ),
+      // Hintergrund mit Farbverlauf
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              // ignore: deprecated_member_use
               theme.colorScheme.primary.withOpacity(0.1),
               theme.scaffoldBackgroundColor,
             ],
           ),
         ),
+        // StreamBuilder zum Abonnieren der Kategorie-Daten aus der Datenbank
         child: StreamBuilder<List<Category>>(
           stream: database.categoriesStream(),
           builder: (context, snapshot) {
+            // Fehlerzustand anzeigen, wenn Stream einen Fehler liefert
             if (snapshot.hasError) {
               return Center(
                 child: Text(
@@ -41,12 +43,14 @@ class CategoriesScreen extends StatelessWidget {
               );
             }
 
+            // Ladeanzeige anzeigen, wenn noch keine Daten vorliegen
             if (!snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
 
             final categories = snapshot.data!;
 
+            // Falls keine Kategorien vorhanden sind, freundliche Meldung anzeigen
             if (categories.isEmpty) {
               return Center(
                 child: Column(
@@ -71,6 +75,7 @@ class CategoriesScreen extends StatelessWidget {
               );
             }
 
+            // Liste der Kategorien anzeigen
             return ListView.builder(
               padding: const EdgeInsets.all(16),
               itemCount: categories.length,
@@ -97,13 +102,14 @@ class CategoriesScreen extends StatelessWidget {
                       category.name,
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
+                    // Löschen-Button mit Bestätigung
                     trailing: IconButton(
                       icon: Icon(Icons.delete, color: theme.colorScheme.error),
                       onPressed: () => _confirmDeleteCategory(
                         context, database, category.id),
                     ),
                     onTap: () {
-                      // Navigate to category items or do something else
+                      // Hier könnte man z.B. zu den Elementen der Kategorie navigieren
                     },
                   ),
                 );
@@ -112,6 +118,7 @@ class CategoriesScreen extends StatelessWidget {
           },
         ),
       ),
+      // Button zum Hinzufügen einer neuen Kategorie
       floatingActionButton: FloatingActionButton(
         backgroundColor: theme.colorScheme.primary,
         child: const Icon(Icons.add, color: Colors.white),
@@ -120,6 +127,7 @@ class CategoriesScreen extends StatelessWidget {
     );
   }
 
+  // Dialog zum Hinzufügen einer neuen Kategorie
   void _showAddCategoryDialog(BuildContext context, DatabaseService database) {
     final controller = TextEditingController();
     final theme = Theme.of(context);
@@ -143,10 +151,12 @@ class CategoriesScreen extends StatelessWidget {
           autofocus: true,
         ),
         actions: [
+          // Abbrechen-Button
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel', style: TextStyle(color: theme.hintColor)),
           ),
+          // Hinzufügen-Button
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.primary,
@@ -155,6 +165,7 @@ class CategoriesScreen extends StatelessWidget {
               ),
             ),
             onPressed: () async {
+              // Nur hinzufügen, wenn der Name nicht leer ist
               if (controller.text.trim().isNotEmpty) {
                 await database.addCategory(controller.text.trim());
                 Navigator.pop(context);
@@ -167,6 +178,7 @@ class CategoriesScreen extends StatelessWidget {
     );
   }
 
+  // Dialog zur Bestätigung des Löschens einer Kategorie
   void _confirmDeleteCategory(
     BuildContext context, DatabaseService database, String categoryId) {
     final theme = Theme.of(context);
@@ -180,10 +192,12 @@ class CategoriesScreen extends StatelessWidget {
         title: const Text('Delete Category', textAlign: TextAlign.center),
         content: const Text('Are you sure you want to delete this category?'),
         actions: [
+          // Abbrechen-Button
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel', style: TextStyle(color: theme.hintColor)),
           ),
+          // Löschen-Button
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.error,
@@ -192,7 +206,7 @@ class CategoriesScreen extends StatelessWidget {
               ),
             ),
             onPressed: () async {
-              // Make sure your DatabaseService has this method implemented
+              // Hier solltest du die Löschfunktion im DatabaseService aufrufen
               // await database.deleteCategory(categoryId);
               Navigator.pop(context);
             },

@@ -1,7 +1,4 @@
-// Full corrected ListItemsScreen
-// Paste this entire file into `list_items_screen.dart`
-
-// Only includes necessary imports from your original
+// Vollständige ListItemsScreen mit Erklärungen
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -10,17 +7,18 @@ import 'package:einkaufsliste/models/shopping_list.dart';
 import 'package:einkaufsliste/services/database_service.dart';
 
 class ListItemsScreen extends StatefulWidget {
-  final ShoppingList list;
-  final VoidCallback onUpdate;
-  final VoidCallback onDeleteList;
-  final Function(String id, String name, DateTime? date) onEditList;
+  final ShoppingList list; // Einkaufsliste, deren Items angezeigt werden
+  final VoidCallback onUpdate; // Callback, um Updates von außen mitzuteilen
+  final VoidCallback onDeleteList; // Callback, wenn Liste gelöscht wird
+  final Function(String id, String name, DateTime? date) onEditList; // Callback für Listenedits
 
   const ListItemsScreen({
     super.key,
     required this.list,
     required this.onUpdate,
     required this.onDeleteList,
-    required this.onEditList, required Future<Null> Function(dynamic listId, dynamic itemName) onAddItem,
+    required this.onEditList,
+    required Future<Null> Function(dynamic listId, dynamic itemName) onAddItem,
   });
 
   @override
@@ -28,58 +26,70 @@ class ListItemsScreen extends StatefulWidget {
 }
 
 class _ListItemsScreenState extends State<ListItemsScreen> {
+  // Controller für die Texteingabe der Item-Namen, Menge und Listenname
   final TextEditingController _itemController = TextEditingController();
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _listNameController = TextEditingController();
-  DateTime? _selectedDate;
+  
+  DateTime? _selectedDate; // Ausgewähltes Datum für Fälligkeitsdatum
 
   @override
   void initState() {
     super.initState();
+    // Initialisiere den Listenname und das Datum aus der übergebenen Liste
     _listNameController.text = widget.list.name;
     _selectedDate = widget.list.dueDate;
   }
 
   @override
   void dispose() {
+    // Speicher freigeben, wenn das Widget zerstört wird
     _itemController.dispose();
     _amountController.dispose();
     _listNameController.dispose();
     super.dispose();
   }
 
+  // Funktion um ein neues Item hinzuzufügen
   Future<void> _addItem() async {
-  if (_itemController.text.trim().isEmpty) return;
+    if (_itemController.text.trim().isEmpty) return; // Wenn leer, nicht hinzufügen
 
-  final amount = _amountController.text.trim().isEmpty
-      ? null // Changed from '1' to null to match your UI
-      : _amountController.text.trim();
+    // Menge ist optional, wenn leer, dann null
+    final amount = _amountController.text.trim().isEmpty
+        ? null
+        : _amountController.text.trim();
 
-  try {
-    final database = Provider.of<DatabaseService>(context, listen: false);
-    await database.addItemToList(
-      widget.list.id,
-      _itemController.text.trim(),
-      amount: _amountController.text.trim().isEmpty ? null : _amountController.text.trim(),// This now passes null if empty
-    );
-    _itemController.clear();
-    _amountController.clear();
-    if (mounted) {
-      setState(() {});
-      widget.onUpdate();
-    }
-  } catch (e) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to add item: ${e.toString()}'),
-          backgroundColor: Theme.of(context).colorScheme.error,
-        ),
+    try {
+      // Hole die Datenbankinstanz aus dem Provider
+      final database = Provider.of<DatabaseService>(context, listen: false);
+      // Item zur Liste hinzufügen
+      await database.addItemToList(
+        widget.list.id,
+        _itemController.text.trim(),
+        amount: amount,
       );
+      // Textfelder nach Hinzufügen leeren
+      _itemController.clear();
+      _amountController.clear();
+
+      if (mounted) {
+        setState(() {}); // UI neu bauen
+        widget.onUpdate(); // Außen informieren, dass sich was geändert hat
+      }
+    } catch (e) {
+      // Fehlerbehandlung, falls das Hinzufügen fehlschlägt
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to add item: ${e.toString()}'),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
+      }
     }
   }
-}
 
+  // Öffnet den Datepicker für das Fälligkeitsdatum
   Future<void> _pickDate(BuildContext context) async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -88,6 +98,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 1),
       builder: (context, child) {
+        // Styling des Datepickers anpassen
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
@@ -107,13 +118,16 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
     );
 
     if (picked != null && picked != _selectedDate) {
+      // Datum speichern und UI aktualisieren
       setState(() {
         _selectedDate = picked;
       });
+      // Callback mit neuem Datum aufrufen
       widget.onEditList(widget.list.id, widget.list.name, _selectedDate);
     }
   }
 
+  // Zeigt den Dialog zum Bearbeiten der Liste an (Name + Datum)
   void _showEditDialog() {
     final theme = Theme.of(context);
 
@@ -128,6 +142,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Textfeld zum Bearbeiten des Listennamens
               TextField(
                 controller: _listNameController,
                 decoration: InputDecoration(
@@ -138,6 +153,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              // Zeile mit Datum und Button zum Auswählen eines neuen Datums
               Row(
                 children: [
                   Expanded(
@@ -163,10 +179,12 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
           ),
         ),
         actions: [
+          // Abbrechen Button
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel', style: TextStyle(color: theme.hintColor)),
           ),
+          // Speichern Button
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.primaryColor,
@@ -175,6 +193,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
               ),
             ),
             onPressed: () {
+              // Änderungen zurückmelden und Dialog schließen
               widget.onEditList(
                 widget.list.id,
                 _listNameController.text.trim(),
@@ -189,6 +208,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
     );
   }
 
+  // Zeigt den Bestätigungsdialog zum Löschen der Liste an
   void _confirmDeleteList() {
     final theme = Theme.of(context);
 
@@ -201,10 +221,12 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
         title: const Text('Delete List', textAlign: TextAlign.center),
         content: const Text('Are you sure you want to delete this list?'),
         actions: [
+          // Abbrechen Button
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text('Cancel', style: TextStyle(color: theme.hintColor)),
           ),
+          // Löschen Button
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: theme.colorScheme.error,
@@ -213,6 +235,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
               ),
             ),
             onPressed: () {
+              // Callback zum Löschen ausführen und den Bildschirm schließen
               widget.onDeleteList();
               Navigator.pop(context);
               Navigator.pop(context);
@@ -224,19 +247,23 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
     );
   }
 
+  // Baut die Liste der Items mit Live-Daten aus Firestore
   Widget _buildItemsList() {
     final theme = Theme.of(context);
     final database = Provider.of<DatabaseService>(context);
 
     return StreamBuilder<DocumentSnapshot>(
+      // Stream holt die aktuelle Einkaufsliste von Firestore
       stream: database.getShoppingList(widget.list.id),
       builder: (context, snapshot) {
+        // Ladezustand anzeigen
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Expanded(
             child: Center(child: CircularProgressIndicator()),
           );
         }
 
+        // Fehler anzeigen
         if (snapshot.hasError) {
           return Expanded(
             child: Center(
@@ -248,13 +275,16 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
           );
         }
 
+        // Wenn keine Daten vorhanden sind
         if (!snapshot.hasData) {
           return const Expanded(
             child: Center(child: Text('No data found')),
           );
         }
 
+        // Daten aus dem Snapshot extrahieren
         final data = snapshot.data!.data() as Map<String, dynamic>;
+        // Liste der Items (als Map) aus den Daten extrahieren
         final items = List<Map<String, dynamic>>.from(data['items'] ?? []);
 
         return Expanded(
@@ -278,11 +308,10 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
                   itemBuilder: (ctx, index) {
                     final item = items[index];
                     return Dismissible(
-                      key: Key('$index-${item['name']}'),
+                      key: Key('$index-${item['name']}'), // Eindeutiger Key zum Löschen
                       background: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
-                          // ignore: deprecated_member_use
                           color: theme.colorScheme.error.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -293,7 +322,6 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
                       secondaryBackground: Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
                         decoration: BoxDecoration(
-                          // ignore: deprecated_member_use
                           color: theme.colorScheme.error.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -301,6 +329,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
                         padding: const EdgeInsets.only(right: 20),
                         child: Icon(Icons.delete, color: theme.colorScheme.error),
                       ),
+                      // Bestätigungsdialog vor dem Löschen
                       confirmDismiss: (direction) async {
                         return await showDialog(
                           context: context,
@@ -320,6 +349,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
                           ),
                         );
                       },
+                      // Löschen aus der Datenbank
                       onDismissed: (direction) async {
                         await database.deleteItemFromList(widget.list.id, index);
                       },
@@ -351,6 +381,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
                                 )
                               : null,
                           value: item['completed'],
+                          // Checkbox-Status ändern und in DB speichern
                           onChanged: (value) async {
                             await database.toggleItemCompletion(widget.list.id, index, value ?? false);
                           },
@@ -378,6 +409,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
       appBar: AppBar(
         title: Row(
           children: [
+            // Falls ein Bild zur Liste existiert, zeige es an
             if (widget.list.imagePath.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(right: 8.0),
@@ -408,6 +440,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
+                // Textfeld für Itemname
                 Expanded(
                   flex: 3,
                   child: TextField(
@@ -416,10 +449,11 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
                       labelText: 'Item name',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     ),
-                    onSubmitted: (_) => _addItem(),
+                    onSubmitted: (_) => _addItem(), // Enter fügt Item hinzu
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Textfeld für Menge (optional)
                 Expanded(
                   flex: 1,
                   child: TextField(
@@ -433,6 +467,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Button zum Item hinzufügen
                 IconButton(
                   icon: Icon(Icons.add_circle, color: theme.primaryColor, size: 40),
                   onPressed: _addItem,
@@ -440,6 +475,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
               ],
             ),
           ),
+          // Anzeige des ausgewählten Fälligkeitsdatums, falls gesetzt
           if (_selectedDate != null)
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -455,6 +491,7 @@ class _ListItemsScreenState extends State<ListItemsScreen> {
               ),
             ),
           const SizedBox(height: 8),
+          // Liste der Items aufbauen
           _buildItemsList(),
         ],
       ),

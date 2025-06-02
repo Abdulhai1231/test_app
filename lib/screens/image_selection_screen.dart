@@ -5,7 +5,10 @@ class ImageSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Zugriff auf das aktuelle Theme für konsistente Styles
     final theme = Theme.of(context);
+    
+    // Liste mit den Pfaden zu den Shop-Logos
     final storeImages = [
       'images/Aldi.png',
       'images/Netto.png',
@@ -17,7 +20,7 @@ class ImageSelectionScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Select Store'),
+        title: const Text('Select Store'), // Titel der Seite
         centerTitle: true,
         elevation: 0,
       ),
@@ -26,6 +29,7 @@ class ImageSelectionScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Überschrift
             Text(
               'Choose a store logo',
               style: theme.textTheme.titleMedium?.copyWith(
@@ -33,6 +37,7 @@ class ImageSelectionScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
+            // Untertitel / Erklärungstext
             Text(
               'This will help identify your shopping list',
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -40,11 +45,12 @@ class ImageSelectionScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+            // Grid mit den Store-Logos
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 1,
+                  crossAxisCount: 3, // 3 Logos pro Zeile
+                  childAspectRatio: 1, // quadratische Zellen
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
                 ),
@@ -60,6 +66,7 @@ class ImageSelectionScreen extends StatelessWidget {
                     ),
                     child: InkWell(
                       borderRadius: BorderRadius.circular(12),
+                      // Bei Tippen wird die Auswahl zurückgegeben und die Seite geschlossen
                       onTap: () => Navigator.pop(context, storeImages[index]),
                       child: Padding(
                         padding: const EdgeInsets.all(16),

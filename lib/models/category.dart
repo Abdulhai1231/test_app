@@ -8,6 +8,8 @@ class AuthScreen extends StatefulWidget {
   @override
   State<AuthScreen> createState() => _AuthScreenState();
 }
+
+// Beispielklasse Category (könnte in eigenem Datei sein)
 class Category {
   final String id;
   final String name;
@@ -23,44 +25,58 @@ class Category {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
+  // Formular-Schlüssel für Validierung
   final _formKey = GlobalKey<FormState>();
+
+  // Controller für Textfelder
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  // Ladezustand und Fehlermeldung
   bool _isLoading = false;
   String? _errorMessage;
 
+  // Funktion zum Einloggen
   Future<void> _login() async {
+    // Prüfen, ob das Formular gültig ist
     if (!_formKey.currentState!.validate()) return;
 
+    // Ladezustand setzen und Fehlermeldung löschen
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
+    // AuthService aus Provider holen (ohne Listener)
     final authService = Provider.of<AuthService>(context, listen: false);
 
+    // Versuch, mit E-Mail & Passwort einzuloggen
     final user = await authService.signInWithEmailAndPassword(
       _emailController.text.trim(),
       _passwordController.text.trim(),
     );
 
+    // Ladezustand zurücksetzen
     setState(() {
       _isLoading = false;
     });
 
+    // Falls Login fehlschlägt, Fehlermeldung anzeigen
     if (user == null) {
       setState(() {
         _errorMessage = 'Login failed. Please check your credentials.';
       });
     } else {
-      // On success, AuthWrapper will detect user change and navigate automatically.
-      Navigator.of(context).pop(); // Optional: pop login screen to prevent stacking
+      // Bei Erfolg: Optional Login-Screen schließen
+      Navigator.of(context).pop();
+      // Navigation kann auch anders gehandhabt werden,
+      // z.B. AuthWrapper lauscht auf User-Änderungen und navigiert automatisch
     }
   }
 
   @override
   void dispose() {
+    // Controller freigeben, um Speicherlecks zu vermeiden
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -77,11 +93,14 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Fehler anzeigen, falls vorhanden
               if (_errorMessage != null)
                 Text(
                   _errorMessage!,
                   style: const TextStyle(color: Colors.red),
                 ),
+
+              // E-Mail Eingabe
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
@@ -90,6 +109,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     value == null || !value.contains('@') ? 'Enter a valid email' : null,
               ),
               const SizedBox(height: 16),
+
+              // Passwort Eingabe
               TextFormField(
                 controller: _passwordController,
                 decoration: const InputDecoration(labelText: 'Password'),
@@ -98,6 +119,8 @@ class _AuthScreenState extends State<AuthScreen> {
                     value == null || value.length < 6 ? 'Enter min. 6 chars' : null,
               ),
               const SizedBox(height: 24),
+
+              // Ladeindikator oder Login-Button
               _isLoading
                   ? const CircularProgressIndicator()
                   : ElevatedButton(

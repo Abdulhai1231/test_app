@@ -11,60 +11,71 @@ class FamilyGroupScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // FamilyService und aktueller User aus Provider holen
     final familyService = Provider.of<FamilyService>(context);
     final currentUser = Provider.of<UserModel?>(context);
 
+    // Wenn kein User eingeloggt, Hinweis anzeigen
     if (currentUser == null) {
       return const Scaffold(
         body: Center(child: Text('Please sign in first')),
       );
     }
 
+    // Scaffold mit AppBar und Hauptinhalt
     return Scaffold(
       appBar: AppBar(title: const Text('Family Group')),
       body: StreamBuilder<QuerySnapshot>(
+        // Stream aus FamilyService, der Family Groups des Users liefert
         stream: familyService.getUserFamilyGroups(currentUser.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
+            // Ladeindikator anzeigen während Daten geladen werden
             return const Center(child: CircularProgressIndicator());
           }
 
+          // Wenn keine Gruppen gefunden wurden
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
             return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text('No family group found'),
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => _showCreateDialog(context, familyService, currentUser),
-                  child: const Text('Create Family Group'),
-                ),
-                const SizedBox(height: 12),
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.mail_outline),
-                  label: const Text('Check Invitations'),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const InvitationsScreen()),
-                    );
-                  },
-                ),
-              ],
-            ),
-          );
-
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('No family group found'),
+                  const SizedBox(height: 20),
+                  // Button zum Erstellen einer neuen Familie
+                  ElevatedButton(
+                    onPressed: () => _showCreateDialog(context, familyService, currentUser),
+                    child: const Text('Create Family Group'),
+                  ),
+                  const SizedBox(height: 12),
+                  // Button um zu den Einladungen zu navigieren
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.mail_outline),
+                    label: const Text('Check Invitations'),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const InvitationsScreen()),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
           }
 
+          // Falls eine Gruppe existiert, nur die erste verwenden (eine User kann nur eine Family Group haben)
           final group = snapshot.data!.docs.first;
           final data = group.data() as Map<String, dynamic>;
+
+          // Baue die UI der Family Group mit Daten und Service
           return _buildGroupUI(context, group.id, data, familyService, currentUser);
         },
       ),
     );
   }
 
+  // Baut die Oberfläche für eine Family Group mit Mitgliedern, Einladungen und Aktionen
   Widget _buildGroupUI(
     BuildContext context,
     String groupId,
@@ -94,6 +105,7 @@ class FamilyGroupScreen extends StatelessWidget {
           child: ListView.builder(
             itemCount: members.length,
             itemBuilder: (context, index) {
+              // Für jedes Mitglied laden wir die User-Daten aus Firestore
               return FutureBuilder<DocumentSnapshot>(
                 future: FirebaseFirestore.instance.collection('users').doc(members[index]).get(),
                 builder: (context, userSnapshot) {
@@ -107,6 +119,7 @@ class FamilyGroupScreen extends StatelessWidget {
                   return ListTile(
                     leading: const CircleAvatar(child: Icon(Icons.person)),
                     title: Text(email),
+                    // Admin kann andere Mitglieder entfernen
                     trailing: isAdmin && members[index] != currentUser.uid
                         ? IconButton(
                             icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
@@ -119,6 +132,7 @@ class FamilyGroupScreen extends StatelessWidget {
             },
           ),
         ),
+        // Anzeige der ausstehenden Einladungen
         if (pendingInvites.isNotEmpty) ...[
           const Divider(),
           const Padding(
@@ -140,12 +154,14 @@ class FamilyGroupScreen extends StatelessWidget {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
+              // Button zum Verlassen der Gruppe
               ElevatedButton.icon(
                 icon: const Icon(Icons.logout, color: Colors.white),
                 label: const Text('Leave Family Group'),
                 style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
                 onPressed: () => _showLeaveFamilyDialog(context, service, groupId),
               ),
+              // Button zum Einladen von Mitgliedern, nur für Admin sichtbar
               if (isAdmin)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -156,6 +172,7 @@ class FamilyGroupScreen extends StatelessWidget {
                   ),
                 ),
 
+              // Warnung wenn Admin die Gruppe verlässt (Gruppe wird gelöscht)
               if (isAdmin) ...[
                 const SizedBox(height: 8),
                 const Text(
@@ -171,6 +188,7 @@ class FamilyGroupScreen extends StatelessWidget {
     );
   }
 
+  // Dialog zum Bestätigen des Verlassens oder Löschens der Gruppe
   void _showLeaveFamilyDialog(BuildContext context, FamilyService service, String groupId) async {
     final user = FirebaseAuth.instance.currentUser;
     final groupSnap = await FirebaseFirestore.instance.collection('familyGroups').doc(groupId).get();
@@ -221,6 +239,7 @@ class FamilyGroupScreen extends StatelessWidget {
     );
   }
 
+  // Dialog zum Erstellen einer neuen Familie
   void _showCreateDialog(BuildContext context, FamilyService service, UserModel user) {
     final controller = TextEditingController();
 
@@ -264,52 +283,53 @@ class FamilyGroupScreen extends StatelessWidget {
       ),
     );
   }
-  void _showInviteDialog(BuildContext context, FamilyService service, String groupId) {
-  final emailController = TextEditingController();
 
-  showDialog(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Invite Member'),
-      content: TextField(
-        controller: emailController,
-        decoration: const InputDecoration(
-          labelText: 'Email',
-          hintText: 'Enter the user\'s email',
+  // Dialog zum Einladen neuer Mitglieder per E-Mail
+  void _showInviteDialog(BuildContext context, FamilyService service, String groupId) {
+    final emailController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Invite Member'),
+        content: TextField(
+          controller: emailController,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            hintText: 'Enter the user\'s email',
+          ),
+          keyboardType: TextInputType.emailAddress,
         ),
-        keyboardType: TextInputType.emailAddress,
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: () async {
-            final email = emailController.text.trim();
-            if (email.isNotEmpty) {
-              Navigator.pop(context);
-              try {
-                await service.sendInvitation(groupId, email);
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Invitation sent to $email')),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${e.toString()}')),
-                  );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final email = emailController.text.trim();
+              if (email.isNotEmpty) {
+                Navigator.pop(context);
+                try {
+                  await service.sendInvitation(groupId, email);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Invitation sent to $email')),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${e.toString()}')),
+                    );
+                  }
                 }
               }
-            }
-          },
-          child: const Text('Send'),
-        ),
-      ],
-    ),
-  );
-}
-
+            },
+            child: const Text('Send'),
+          ),
+        ],
+      ),
+    );
+  }
 }

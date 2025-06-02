@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class CreateListScreen extends StatefulWidget {
+  // Callback-Funktion, die aufgerufen wird, wenn eine neue Liste erstellt wird
   final Function(String name, bool isFamilyList) onCreateList;
 
   const CreateListScreen({
@@ -13,7 +14,9 @@ class CreateListScreen extends StatefulWidget {
 }
 
 class _CreateListScreenState extends State<CreateListScreen> {
+  // Controller für das Textfeld zur Eingabe des Listennamens
   final _nameController = TextEditingController();
+  // Boolean, ob die Liste eine Familienliste sein soll oder nicht
   bool _isFamilyList = false;
 
   @override
@@ -26,13 +29,14 @@ class _CreateListScreenState extends State<CreateListScreen> {
         centerTitle: true,
         elevation: 0,
       ),
+      // Scrollbar, falls der Inhalt größer als der Bildschirm ist
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Header
             const SizedBox(height: 16),
+            // Überschrift des Screens
             Text(
               'New Shopping List',
               style: theme.textTheme.headlineSmall?.copyWith(
@@ -40,16 +44,16 @@ class _CreateListScreenState extends State<CreateListScreen> {
               ),
             ),
             const SizedBox(height: 8),
+            // Untertitel, kurze Beschreibung
             Text(
               'Organize your groceries with a new list',
               style: theme.textTheme.bodyMedium?.copyWith(
-                // ignore: deprecated_member_use
                 color: theme.colorScheme.onSurface.withOpacity(0.6),
               ),
             ),
             const SizedBox(height: 32),
             
-            // Name Input
+            // Textfeld für die Eingabe des Listennamens
             TextField(
               controller: _nameController,
               decoration: InputDecoration(
@@ -64,7 +68,7 @@ class _CreateListScreenState extends State<CreateListScreen> {
             ),
             const SizedBox(height: 24),
             
-            // Family List Toggle
+            // Umschalter (Switch) ob die Liste eine Familienliste ist
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
@@ -91,9 +95,10 @@ class _CreateListScreenState extends State<CreateListScreen> {
             ),
             const SizedBox(height: 40),
             
-            // Create Button
+            // Button zum Erstellen der Liste
             ElevatedButton(
               onPressed: () {
+                // Nur wenn der Name nicht leer ist, Callback aufrufen und Screen schließen
                 if (_nameController.text.isNotEmpty) {
                   widget.onCreateList(_nameController.text, _isFamilyList);
                   Navigator.pop(context);
@@ -118,6 +123,7 @@ class _CreateListScreenState extends State<CreateListScreen> {
 
   @override
   void dispose() {
+    // Controller aufräumen, wenn Widget entfernt wird
     _nameController.dispose();
     super.dispose();
   }

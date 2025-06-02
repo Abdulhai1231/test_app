@@ -12,10 +12,17 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  // Key für die Formularvalidierung
   final _formKey = GlobalKey<FormState>();
+
+  // Controller für die Eingabefelder Email und Passwort
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  // Status ob gerade ein Ladevorgang (Login) läuft
   bool _isLoading = false;
+
+  // Fehlernachricht, die bei falschen Eingaben angezeigt wird
   String? _errorMessage;
 
   @override
@@ -25,9 +32,10 @@ class _LoginScreenState extends State<LoginScreen> {
       body: Padding(
         padding: const EdgeInsets.all(20.0),
         child: Form(
-          key: _formKey,
+          key: _formKey, // Formular mit Validierung
           child: Column(
             children: [
+              // Email-Eingabefeld mit Validierung
               TextFormField(
                 controller: _emailController,
                 decoration: const InputDecoration(labelText: 'Email'),
@@ -38,10 +46,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   return null;
                 },
               ),
+              // Passwort-Eingabefeld mit Validierung
               TextFormField(
                 controller: _passwordController,
                 decoration: const InputDecoration(labelText: 'Password'),
-                obscureText: true,
+                obscureText: true, // Passwort verdeckt eingeben
                 validator: (value) {
                   if (value == null || value.isEmpty) {
                     return 'Please enter your password';
@@ -52,21 +61,24 @@ class _LoginScreenState extends State<LoginScreen> {
                   return null;
                 },
               ),
+              // Anzeige der Fehlernachricht (z.B. falsches Passwort)
               if (_errorMessage != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 16.0),
                   child: Text(
                     _errorMessage!,
-                    style: TextStyle(color: Colors.red),
+                    style: const TextStyle(color: Colors.red),
                   ),
                 ),
               const SizedBox(height: 20),
+              // Ladeindikator oder Login-Button
               _isLoading
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                       onPressed: _handleLogin,
                       child: const Text('Login'),
                     ),
+              // Button zur Registrierung - navigiert zum RegisterScreen
               TextButton(
                 onPressed: () => Navigator.push(
                   context,
@@ -81,52 +93,59 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // Methode, die Login-Prozess durchführt
   Future<void> _handleLogin() async {
-  if (!_formKey.currentState!.validate()) return;
+    // Prüfe, ob die Eingaben gültig sind
+    if (!_formKey.currentState!.validate()) return;
 
-  setState(() {
-    _isLoading = true;
-    _errorMessage = null;
-  });
+    setState(() {
+      _isLoading = true;   // Ladezustand aktivieren
+      _errorMessage = null; // Fehlernachricht zurücksetzen
+    });
 
-  try {
-    final email = _emailController.text.trim();
-    debugPrint('Attempting login with email: $email');
+    try {
+      final email = _emailController.text.trim();
+      debugPrint('Attempting login with email: $email');
 
-    // 1. Check if email exists in Firebase
-    // ignore: deprecated_member_use
-    final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
-    debugPrint('Available sign-in methods: $methods');
+      // 1. Prüfe, ob die Email in Firebase existiert
+      // (fetchSignInMethodsForEmail ist veraltet, aber hier verwendet)
+      final methods = await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      debugPrint('Available sign-in methods: $methods');
 
-    if (methods.isEmpty) {
-      setState(() => _errorMessage = 'No account found for this email');
-      return;
+      // Wenn keine Methode zurückkommt, existiert kein Account mit der Email
+      if (methods.isEmpty) {
+        setState(() => _errorMessage = 'No account found for this email');
+        return;
+      }
+
+      // 2. Versuch dich einzuloggen
+      debugPrint('Attempting sign-in...');
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final user = await authService.signInWithEmailAndPassword(
+        email,
+        _passwordController.text, // Passwort nicht trimmen!
+      );
+      
+      debugPrint('Login result: ${user?.uid ?? "null"}');
+
+      // Falls Email nicht verifiziert ist, Fehler anzeigen
+      if (user != null && !user.emailVerified) {
+        setState(() => _errorMessage = 'Invalid password'); // Hier könntest du 'Email not verified' schreiben
+      }
+    } on FirebaseAuthException catch (e) {
+      // Spezifische Firebase-Fehler ausgeben
+      debugPrint('FIREBASE ERROR: ${e.code} - ${e.message}');
+      setState(() => _errorMessage = _getErrorMessage(e.code));
+    } catch (e) {
+      // Generischer Fehler
+      debugPrint('GENERIC ERROR: $e');
+      setState(() => _errorMessage = 'Login failed');
+    } finally {
+      setState(() => _isLoading = false); // Ladezustand deaktivieren
     }
-
-    // 2. Attempt login
-    debugPrint('Attempting sign-in...');
-    final authService = Provider.of<AuthService>(context, listen: false);
-    final user = await authService.signInWithEmailAndPassword(
-      email,
-      _passwordController.text, // Don't trim passwords!
-    );
-    
-    debugPrint('Login result: ${user?.uid ?? "null"}');
-
-    if (user != null && !user.emailVerified) {
-      setState(() => _errorMessage = 'Invalid password');
-    }
-  } on FirebaseAuthException catch (e) {
-    debugPrint('FIREBASE ERROR: ${e.code} - ${e.message}');
-    setState(() => _errorMessage = _getErrorMessage(e.code));
-  } catch (e) {
-    debugPrint('GENERIC ERROR: $e');
-    setState(() => _errorMessage = 'Login failed');
-  } finally {
-    setState(() => _isLoading = false);
   }
-}
 
+  // Hilfsmethode: Fehlercode in benutzerfreundliche Nachricht umwandeln
   String _getErrorMessage(String code) {
     switch (code) {
       case 'wrong-password':
@@ -146,6 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    // Controller beim Verwerfen des Widgets freigeben
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class AddListScreen extends StatefulWidget {
+  // Callback, das beim Erstellen der Liste aufgerufen wird mit id, name, datum und Bildpfad
   final Function(String id, String name, DateTime? date, String imagePath) onAddList;
 
   const AddListScreen({super.key, required this.onAddList});
@@ -12,21 +13,29 @@ class AddListScreen extends StatefulWidget {
 }
 
 class _AddListScreenState extends State<AddListScreen> {
+  // Formular-Key zur Validierung
   final _formKey = GlobalKey<FormState>();
+  // Controller für das Eingabefeld des Listen-Namens
   final _nameController = TextEditingController();
+  // Ausgewähltes Datum (optional)
   DateTime? _selectedDate;
+  // Ausgewählter Bildpfad (optional)
   String? _selectedImagePath;
 
+  // Methode zum Absenden des Formulars
   void _submit() {
+    // Nur absenden, wenn Formular gültig ist und ein Bild ausgewählt wurde
     if (_formKey.currentState!.validate() && _selectedImagePath != null) {
       widget.onAddList(
-        DateTime.now().millisecondsSinceEpoch.toString(),
+        DateTime.now().millisecondsSinceEpoch.toString(), // eindeutige ID
         _nameController.text,
         _selectedDate,
         _selectedImagePath!,
       );
+      // Bildschirm schließen und "refresh" zurückgeben
       Navigator.pop(context, "refresh");
     } else if (_selectedImagePath == null) {
+      // Zeige Hinweis, wenn kein Bild ausgewählt wurde
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Please select an image'),
@@ -39,6 +48,7 @@ class _AddListScreenState extends State<AddListScreen> {
     }
   }
 
+  // Öffnet den Datumsauswahldialog
   Future<void> _pickDate() async {
     final now = DateTime.now();
     final picked = await showDatePicker(
@@ -47,6 +57,7 @@ class _AddListScreenState extends State<AddListScreen> {
       firstDate: DateTime(now.year - 1),
       lastDate: DateTime(now.year + 1),
       builder: (context, child) {
+        // Thema für den DatePicker anpassen
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: ColorScheme.light(
@@ -65,11 +76,13 @@ class _AddListScreenState extends State<AddListScreen> {
       },
     );
     
+    // Wenn ein Datum gewählt wurde, speichern und UI aktualisieren
     if (picked != null) {
       setState(() => _selectedDate = picked);
     }
   }
 
+  // Öffnet die Bildauswahl-Screen und speichert das Ergebnis
   Future<void> _selectImage(BuildContext context) async {
     final result = await Navigator.push(
       context,
@@ -78,6 +91,7 @@ class _AddListScreenState extends State<AddListScreen> {
       ),
     );
     
+    // Wenn ein Bild ausgewählt wurde, in den State übernehmen
     if (result != null) {
       setState(() => _selectedImagePath = result);
     }
@@ -100,7 +114,7 @@ class _AddListScreenState extends State<AddListScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
+              // Überschrift des Formulars
               Text(
                 'List Details',
                 style: theme.textTheme.titleLarge?.copyWith(
@@ -108,16 +122,16 @@ class _AddListScreenState extends State<AddListScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+              // Beschreibungstext unter der Überschrift
               Text(
                 'Fill in the details for your new shopping list',
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  // ignore: deprecated_member_use
                   color: theme.colorScheme.onSurface.withOpacity(0.6),
                 ),
               ),
               const SizedBox(height: 32),
               
-              // Name Field
+              // Eingabefeld für den Listennamen mit Validierung
               TextFormField(
                 controller: _nameController,
                 decoration: InputDecoration(
@@ -127,7 +141,6 @@ class _AddListScreenState extends State<AddListScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   filled: true,
-                  // ignore: deprecated_member_use
                   fillColor: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
                 ),
                 validator: (value) {
@@ -139,18 +152,16 @@ class _AddListScreenState extends State<AddListScreen> {
               ),
               const SizedBox(height: 24),
               
-              // Date Picker
+              // Bereich für Datumsauswahl (öffnet DatePicker)
               InkWell(
                 onTap: _pickDate,
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
                     color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      // ignore: deprecated_member_use
                       color: theme.colorScheme.outline.withOpacity(0.2),
                     ),
                   ),
@@ -172,7 +183,6 @@ class _AddListScreenState extends State<AddListScreen> {
                       Icon(
                         Icons.arrow_forward_ios,
                         size: 16,
-                        // ignore: deprecated_member_use
                         color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ],
@@ -181,18 +191,16 @@ class _AddListScreenState extends State<AddListScreen> {
               ),
               const SizedBox(height: 24),
               
-              // Image Selection
+              // Bereich für Bildauswahl (öffnet ImageSelectionScreen)
               InkWell(
                 onTap: () => _selectImage(context),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    // ignore: deprecated_member_use
                     color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.4),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      // ignore: deprecated_member_use
                       color: theme.colorScheme.outline.withOpacity(0.2),
                     ),
                   ),
@@ -214,11 +222,11 @@ class _AddListScreenState extends State<AddListScreen> {
                           Icon(
                             Icons.arrow_forward_ios,
                             size: 16,
-                            // ignore: deprecated_member_use
                             color: theme.colorScheme.onSurface.withOpacity(0.6),
                           ),
                         ],
                       ),
+                      // Wenn ein Bild ausgewählt ist, zeige Vorschaubild
                       if (_selectedImagePath != null) ...[
                         const SizedBox(height: 12),
                         Center(
@@ -234,7 +242,7 @@ class _AddListScreenState extends State<AddListScreen> {
               ),
               const SizedBox(height: 40),
               
-              // Create Button
+              // Button zum Erstellen der Liste
               ElevatedButton(
                 onPressed: _submit,
                 style: ElevatedButton.styleFrom(
@@ -255,6 +263,7 @@ class _AddListScreenState extends State<AddListScreen> {
     );
   }
 
+  // Ressourcen aufräumen
   @override
   void dispose() {
     _nameController.dispose();

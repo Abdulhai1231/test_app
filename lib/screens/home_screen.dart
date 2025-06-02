@@ -1,20 +1,22 @@
 import 'package:flutter/material.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key}); // Proper Widget constructor
+  const HomeScreen({super.key}); // Konstruktor für das Widget
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: const Text('Home'), // Titel der AppBar
       ),
       body: Center(
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center, // Inhalte vertikal zentrieren
           children: [
-            Image.asset('images/shopping.png'), // Make sure to add the image in `pubspec.yaml`
-            const Text('Welcome to the Home Screen!'), // Just some content
+            // Bild aus assets, stelle sicher, dass es in pubspec.yaml eingetragen ist
+            Image.asset('images/shopping.png'),
+            // Einfacher Text als Willkommensnachricht
+            const Text('Welcome to the Home Screen!'),
           ],
         ),
       ),
