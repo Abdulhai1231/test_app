@@ -4,6 +4,7 @@ import 'package:einkaufsliste/models/grocery_item.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+
 class DatabaseService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -206,15 +207,17 @@ class DatabaseService {
 
   // Items
 
-  Future<void> addItemToList(String listId, String itemName) async {
-    await _db.collection('shoppingLists').doc(listId).update({
-      'items': FieldValue.arrayUnion([{
+  Future<void> addItemToList(String listId, String itemName, {String? amount}) async {
+  await _db.collection('shoppingLists').doc(listId).update({
+    'items': FieldValue.arrayUnion([
+      {
         'name': itemName,
         'completed': false,
-        'addedAt': DateTime.now().toIso8601String(),
-      }])
-    });
-  }
+        'amount': amount,
+      }
+    ]),
+  });
+}
 
   Future<void> toggleItemCompletion(String listId, int index, bool completed) async {
     final doc = _db.collection('shoppingLists').doc(listId);

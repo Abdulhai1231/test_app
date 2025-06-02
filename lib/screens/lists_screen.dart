@@ -492,7 +492,7 @@ void _showFamilyRequiredNotification(BuildContext context) {
       builder: (_) => ListItemsScreen(
         list: list,
         onAddItem: (listId, itemName) async {
-          await database.addItemToList(listId, itemName);
+          await database.addItemToList(listId, itemName, amount: '');
         },
         onUpdate: () => setState(() {}),
         onDeleteList: () async {

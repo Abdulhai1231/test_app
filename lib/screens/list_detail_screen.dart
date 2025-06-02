@@ -66,7 +66,7 @@ class _ListDetailScreenState extends State<ListDetailScreen> {
                       onPressed: () {
                         if (_itemController.text.isNotEmpty) {
                           dbService.addItemToList(
-                            widget.listId, _itemController.text);
+                            widget.listId, _itemController.text, amount: '');
                           _itemController.clear();
                         }
                       },

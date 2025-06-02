@@ -52,6 +52,7 @@ void main() async {
 }
 
 class DefaultFirebaseOptions {
+  // ignore: prefer_typing_uninitialized_variables
   static var currentPlatform;
 }
 
@@ -78,6 +79,8 @@ class MyApp extends StatelessWidget {
 }
 
   class AuthWrapper extends StatelessWidget {
+  const AuthWrapper({super.key});
+
   @override
   Widget build(BuildContext context) {
     final authService = Provider.of<AuthService>(context, listen: false);

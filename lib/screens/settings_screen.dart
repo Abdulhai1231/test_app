@@ -11,8 +11,8 @@ class SettingsScreen extends StatelessWidget {
 
   Future<void> _launchEmail(BuildContext context) async {
     final Uri emailLaunchUri = Uri(
-      scheme: 'mailto',
-      path: 'myemail@example.com',
+      scheme: 'Feedback',
+      path: 'alboukai.abdulhai@gmail.com',
       queryParameters: {
         'subject': 'App Support Request',
         'body': 'Please describe your issue here...'
